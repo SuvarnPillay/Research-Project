@@ -55,6 +55,9 @@ def define_dbn_structure():
 # })
 
 scale_factor = 10
+# Define the scaling factors (already scaled by 10 so max veloctity after this scale would be 2000 and angle would be 360)
+velocity_scale_factor = 200
+angle_scale_factor = 36
 
 data = pd.DataFrame({
     ('ProjectileVelocity', 0): (np.random.rand(100) * scale_factor).astype(int),  # Scale up to some range, e.g., 0 to 100
@@ -133,12 +136,15 @@ prediction = dbn_infer.forward_inference(variables=[('InterceptorVelocity', 1), 
 predicted_values = {var: prediction[var].values for var in prediction}
 
 # Reverse scaling function
-def reverse_scale(scaled_value, scale_factor):
-    return scaled_value / scale_factor
+def reverse_scale(value, is_angle=False):
+    if is_angle:
+        return value * angle_scale_factor
+    else:
+        return value * velocity_scale_factor
 
 # Map the predicted discrete state back to continuous values
 reverse_scaled_predictions = {
-    var: reverse_scale(np.argmax(prediction[var].values), scale_factor) for var in prediction
+    var: reverse_scale(np.argmax(prediction[var].values), is_angle='Angle' in str(var)) for var in prediction
 }
 
 print("Predicted values (discrete):", predicted_values)
