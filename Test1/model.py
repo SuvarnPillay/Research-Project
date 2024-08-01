@@ -42,17 +42,35 @@ def define_dbn_structure():
 
 
 # Create a DataFrame with columns named using time slices 0 and 1
+
+# raw_data = pd.DataFrame({
+#     ('ProjectileVelocity', 0): np.random.rand(100) * 100,  # Scale up to some range, e.g., 0 to 100
+#     ('ProjectileAngle', 0): np.random.rand(100) * 360,    # Angle range from 0 to 360 degrees
+#     ('InterceptorVelocity', 0): np.random.rand(100) * 100,
+#     ('InterceptorAngle', 0): np.random.rand(100) * 360,
+#     ('ProjectileVelocity', 1): np.random.rand(100) * 100,
+#     ('ProjectileAngle', 1): np.random.rand(100) * 360,
+#     ('InterceptorVelocity', 1): np.random.rand(100) * 100,
+#     ('InterceptorAngle', 1): np.random.rand(100) * 360,
+# })
+
+scale_factor = 10
+
 data = pd.DataFrame({
-    ('ProjectileVelocity', 0): np.random.rand(100),
-    ('ProjectileAngle', 0): np.random.rand(100),
-    ('InterceptorVelocity', 0): np.random.rand(100),
-    ('InterceptorAngle', 0): np.random.rand(100),
-    ('ProjectileVelocity', 1): np.random.rand(100),
-    ('ProjectileAngle', 1): np.random.rand(100),
-    ('InterceptorVelocity', 1): np.random.rand(100),
-    ('InterceptorAngle', 1): np.random.rand(100),
+    ('ProjectileVelocity', 0): (np.random.rand(100) * scale_factor).astype(int),  # Scale up to some range, e.g., 0 to 100
+    ('ProjectileAngle', 0): (np.random.rand(100) * scale_factor).astype(int),    # Angle range from 0 to 360 degrees
+    ('InterceptorVelocity', 0): (np.random.rand(100) * scale_factor).astype(int),
+    ('InterceptorAngle', 0): (np.random.rand(100) * scale_factor).astype(int),
+    ('ProjectileVelocity', 1): (np.random.rand(100) * scale_factor).astype(int),
+    ('ProjectileAngle', 1): (np.random.rand(100) * scale_factor).astype(int),
+    ('InterceptorVelocity', 1): (np.random.rand(100) * scale_factor).astype(int),
+    ('InterceptorAngle', 1): (np.random.rand(100) * scale_factor).astype(int),
 })
+
+# rounded_data = np.round(raw_data/10)*10
+# data = rounded_data.astype(int)
 print(data.head())
+
 
 
 # Initialize the DBN structure
@@ -96,11 +114,33 @@ from pgmpy.inference import DBNInference
 dbn_infer = DBNInference(dbn)
 
 # # Define evidence (current state)
+# evidence = {
+#     ('ProjectileVelocity', 0): 100,
+#     ('ProjectileAngle', 0): 45,
+# }
+
+# Define evidence (current state) - scaled to the range 0 to 10
 evidence = {
-    ('ProjectileVelocity', 0): 100,
-    ('ProjectileAngle', 0): 45,
+    ('ProjectileVelocity', 0): 1,
+    ('ProjectileAngle', 0): 5,
 }
 
 # # Perform inference (predict the next state or optimal actions)
-prediction = dbn_infer.map_query(variables=[('InterceptorVelocity', 1), ('InterceptorAngle', 1)], evidence=evidence)
-print(prediction)
+prediction = dbn_infer.forward_inference(variables=[('InterceptorVelocity', 1), ('InterceptorAngle', 1)], evidence=evidence)
+
+
+# Extract and print the predicted values
+predicted_values = {var: prediction[var].values for var in prediction}
+
+# Reverse scaling function
+def reverse_scale(scaled_value, scale_factor):
+    return scaled_value / scale_factor
+
+# Map the predicted discrete state back to continuous values
+reverse_scaled_predictions = {
+    var: reverse_scale(np.argmax(prediction[var].values), scale_factor) for var in prediction
+}
+
+print("Predicted values (discrete):", predicted_values)
+print("Reverse scaled predictions:", reverse_scaled_predictions)
+
