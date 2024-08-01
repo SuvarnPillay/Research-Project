@@ -9,16 +9,6 @@ from pgmpy.models import DynamicBayesianNetwork as DBN
 def define_dbn_structure():
     dbn = DBN()
     
-    # Define nodes for time slices 0 and 1
-    # nodes_t0 = ['ProjectileVelocity', 'ProjectileAngle', 'InterceptorVelocity', 'InterceptorAngle']
-    # nodes_t1 = [f'{node}_1' for node in nodes_t0]
-    
-    # # Add nodes for time slice 0 and 1
-    # for node in nodes_t0:
-    #     dbn.add_node((node, 0))
-    # for node in nodes_t1:
-    #     dbn.add_node((node, 1))
-    
     # Add edges for temporal dependencies
     edges = [
         (('ProjectileVelocity', 0), ('ProjectileVelocity', 1)),
@@ -37,22 +27,6 @@ def define_dbn_structure():
     
     return dbn
 
-
-
-
-
-# Create a DataFrame with columns named using time slices 0 and 1
-
-# raw_data = pd.DataFrame({
-#     ('ProjectileVelocity', 0): np.random.rand(100) * 100,  # Scale up to some range, e.g., 0 to 100
-#     ('ProjectileAngle', 0): np.random.rand(100) * 360,    # Angle range from 0 to 360 degrees
-#     ('InterceptorVelocity', 0): np.random.rand(100) * 100,
-#     ('InterceptorAngle', 0): np.random.rand(100) * 360,
-#     ('ProjectileVelocity', 1): np.random.rand(100) * 100,
-#     ('ProjectileAngle', 1): np.random.rand(100) * 360,
-#     ('InterceptorVelocity', 1): np.random.rand(100) * 100,
-#     ('InterceptorAngle', 1): np.random.rand(100) * 360,
-# })
 
 scale_factor = 10
 # Define the scaling factors (already scaled by 10 so max veloctity after this scale would be 2000 and angle would be 360)
@@ -79,24 +53,6 @@ print(data.head())
 # Initialize the DBN structure
 dbn = define_dbn_structure()
 
-# # Use Hill Climb Search for structure learning
-# hc_search = HillClimbSearch(data)
-# best_model = hc_search.estimate()
-
-# # Initialize the DBN with the learned structure
-# dbn = DBN(best_model.edges())
-
-# Add the learned structure to the DBN
-# for edge in best_model.edges():
-#     dbn.add_edge(edge[0], edge[1])
-
-# Add nodes
-# for node in data.columns:
-#     if node.endswith('_1'):
-#         dbn.add_node((node[:-2], 1))
-#     else:
-#         dbn.add_node((node, 0))
-
 # Print the learned structure
 print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 print("Listing the nodes:",list(dbn.nodes()))
@@ -115,12 +71,6 @@ from pgmpy.inference import DBNInference
 
 # # Create an inference object
 dbn_infer = DBNInference(dbn)
-
-# # Define evidence (current state)
-# evidence = {
-#     ('ProjectileVelocity', 0): 100,
-#     ('ProjectileAngle', 0): 45,
-# }
 
 # Define evidence (current state) - scaled to the range 0 to 10
 evidence = {
