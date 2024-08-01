@@ -60,9 +60,9 @@ disp(sp.Eq(sp.Symbol('y(t)'), y))
 
 # Example usage with different parameters
 params_list = [
-    (100, 45),
-    (150, 30),
-    (200, 60)
+    (2500, 45),
+    (2400, 30),
+    (3000, 60)
 ]
 plot_trajectory(params_list)
 
