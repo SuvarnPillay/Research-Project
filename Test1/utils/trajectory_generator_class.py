@@ -53,7 +53,7 @@ class Projectile:
 
 
             # If you want to combine x and y into a single array of coordinates
-            coordinates = np.column_stack((x_vals, y_vals))
+            coordinates = np.column_stack((x_vals, y_vals,t_vals))
             self.trajectory = coordinates
 
             

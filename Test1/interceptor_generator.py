@@ -2,6 +2,8 @@ import sys
 sys.path.insert(0, r'C:\Users\suvar\General\Work\Varsity\Honours\Research\Lab\Test1\utils')
 from trajectory_generator_class import Projectile
 import matplotlib.pyplot as plt
+import sympy as sp
+from sympy import sin, cos
 
 def plot_trajectory(trajectory):
 
@@ -21,10 +23,32 @@ def plot_trajectory(trajectory):
     plt.show()
 
 
+
+
+def calculate_interception(enemy: Projectile):
+    
+    MAX_VELOCITY = 2500
+
+    a,b,V0_I, Theta_I, t = sp.symbols('a b Theta_I t')
+
+    V0_P = enemy.params[0]
+    Theta_P = enemy.params[1]
+    V0_I = MAX_VELOCITY
+
+    a = V0_P * sin(Theta_P)
+    b = V0_P * cos(Theta_P)
+
+    
+
+
+
+
 enemy = Projectile(2500,45)
 
 plot_trajectory(enemy.trajectory)
+print(enemy.trajectory)
+
+interception_trajectory = calculate_interception(enemy)
 
 
 
-def calculate_interception():
