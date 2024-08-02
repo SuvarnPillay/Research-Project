@@ -1,1 +1,2 @@
-print(data.columns)
+
+# def calculate_interception():

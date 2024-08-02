@@ -65,4 +65,3 @@ params_list = [
     (3000, 60)
 ]
 plot_trajectory(params_list)
-

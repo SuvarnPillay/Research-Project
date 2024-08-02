@@ -33,6 +33,7 @@ scale_factor = 10
 velocity_scale_factor = 200
 angle_scale_factor = 36
 
+#100 random floats for each column between 0 and 1
 data = pd.DataFrame({
     ('ProjectileVelocity', 0): (np.random.rand(100) * scale_factor).astype(int),  # Scale up to some range, e.g., 0 to 100
     ('ProjectileAngle', 0): (np.random.rand(100) * scale_factor).astype(int),    # Angle range from 0 to 360 degrees
