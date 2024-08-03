@@ -41,6 +41,7 @@ class Projectile:
             
             # Calculate total flight time
             t_flight = 2 * v0_val * np.sin(theta_rad_val) / g_val
+            print("Projectile Flight Time: " + str(t_flight))
             t_vals = np.linspace(0, t_flight, num=500)
             
             # Substitute values into the equations
