@@ -7,6 +7,30 @@ from sympy import sin, cos
 import numpy as np
 from IPython.display import display as disp
 
+def filter_trajectories(enemy: Projectile, interception_trajectories, impact_time):
+
+    filtered_trajectories = []
+
+    for impact_time in impact_times:
+        # Calculate enemy position at impact time
+        enemy_position_x = enemy.params[0][0] * np.cos(np.radians(enemy.params[0][1])) * impact_time
+        enemy_position_y = enemy.params[0][0] * np.sin(np.radians(enemy.params[0][1])) * impact_time - 0.5 * 9.81 * impact_time ** 2
+
+        
+        for trajectory in interception_trajectories:
+            final_x = trajectory[-1, 0]
+            final_y = trajectory[-1, 1]
+            
+            # Set a tolerance for how close the interception must be
+            tolerance = 100  # Adjust this value as needed
+            
+            # Check if the final x and y positions are within the tolerance of the enemy's position
+            if np.abs(final_x - enemy_position_x) <= tolerance and np.abs(final_y - enemy_position_y) <= tolerance:
+                filtered_trajectories.append(trajectory)
+
+    return filtered_trajectories
+
+
 def plot_trajectory(trajectory):
 
     # Assuming self.trajectory now contains your coordinates
@@ -25,7 +49,7 @@ def plot_trajectory(trajectory):
     plt.show()
 
 
-def plot_both_trajectories(enemy_trajectory, interception_trajectories):
+def plot_all_trajectories(enemy_trajectory, interception_trajectories):
 
     
     plt.figure(figsize=(10, 6))  # Optional: set figure size
@@ -55,7 +79,7 @@ def plot_both_trajectories(enemy_trajectory, interception_trajectories):
 
 
 def calculate_interception(enemy: Projectile):
-    MAX_VELOCITY = 2500
+    MAX_VELOCITY = 3000
     INTERCEPTOR_START_X = 400000
     
     g_val = 9.81
@@ -91,48 +115,51 @@ def calculate_interception(enemy: Projectile):
         print("No valid impact times found.")
         return []
 
-    impact_time = max(impact_times)
+    # impact_time = max(impact_times)
 
-    print("Impact Time:", impact_time)
+
 
     trajectories = []
 
-    for Theta_I in Theta_I_Vals:
-        impact_time = float(impact_time)
-        t_vals = np.linspace(0, impact_time, num=500)
+    for impact_time in impact_times:
+        for Theta_I in Theta_I_Vals:
+            impact_time = float(impact_time)
+            t_vals = np.linspace(0, impact_time, num=500)
 
-        # Define symbolic variables
-        v0, theta, g, t_sym = sp.symbols('v0 theta g t')
+            # Define symbolic variables
+            v0, theta, g, t_sym = sp.symbols('v0 theta g t')
 
-        # Define the equations
-        x = v0 * sp.cos(theta) * t_sym + INTERCEPTOR_START_X
-        y = v0 * sp.sin(theta) * t_sym - 0.5 * g * t_sym**2
-        
-        # Substitute values into the equations
-        x_vals = [x.subs({v0: V0_I, theta: Theta_I, g: g_val, t_sym: ti}) for ti in t_vals]
-        y_vals = [y.subs({v0: V0_I, theta: Theta_I, g: g_val, t_sym: ti}) for ti in t_vals]
-        
-        # Convert symbolic expressions to numerical values
-        x_vals = np.array(x_vals, dtype=float)
-        y_vals = np.array(y_vals, dtype=float)
+            # Define the equations
+            x = v0 * sp.cos(theta) * t_sym + INTERCEPTOR_START_X
+            y = v0 * sp.sin(theta) * t_sym - 0.5 * g * t_sym**2
+            
+            # Substitute values into the equations
+            x_vals = [x.subs({v0: V0_I, theta: Theta_I, g: g_val, t_sym: ti}) for ti in t_vals]
+            y_vals = [y.subs({v0: V0_I, theta: Theta_I, g: g_val, t_sym: ti}) for ti in t_vals]
+            
+            # Convert symbolic expressions to numerical values
+            x_vals = np.array(x_vals, dtype=float)
+            y_vals = np.array(y_vals, dtype=float)
 
-        # Combine x and y into a single array of coordinates
-        coordinates = np.column_stack((x_vals, y_vals, t_vals))
-        trajectory = coordinates
-        trajectories.append(trajectory)
+            # Combine x and y into a single array of coordinates
+            coordinates = np.column_stack((x_vals, y_vals, t_vals))
+            trajectory = coordinates
+            trajectories.append(trajectory)
 
-    return trajectories
-
-
-
-
-enemy = Projectile(2500,45)
+    return trajectories, impact_times
 
 
-interception_trajectories = calculate_interception(enemy)
+
+
+enemy = Projectile(1000,45)
+
+
+interception_trajectories, impact_times = calculate_interception(enemy)
 
 if interception_trajectories:
-    plot_both_trajectories(enemy.trajectory, interception_trajectories)
+    filtered_trajectories = filter_trajectories(enemy, interception_trajectories, impact_times)
+    plot_all_trajectories(enemy.trajectory, filtered_trajectories)
+
 
 
 
