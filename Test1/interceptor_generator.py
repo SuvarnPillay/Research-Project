@@ -15,14 +15,18 @@ def filter_trajectories(enemy: Projectile, interception_trajectories, impact_tim
         # Calculate enemy position at impact time
         enemy_position_x = enemy.params[0][0] * np.cos(np.radians(enemy.params[0][1])) * impact_time
         enemy_position_y = enemy.params[0][0] * np.sin(np.radians(enemy.params[0][1])) * impact_time - 0.5 * 9.81 * impact_time ** 2
-
+        if enemy_position_x < 0 or enemy_position_y < 0:
+            return None
         
+        print(f"Enemy position: {enemy_position_x},{enemy_position_y}" )
         for trajectory in interception_trajectories:
+            #-1 gets the last value in the list
             final_x = trajectory[-1, 0]
             final_y = trajectory[-1, 1]
+            print(f"Interceptor Position: {final_x},{final_y}" )
             
             # Set a tolerance for how close the interception must be
-            tolerance = 100  # Adjust this value as needed
+            tolerance = 5  # Adjust this value as needed
             
             # Check if the final x and y positions are within the tolerance of the enemy's position
             if np.abs(final_x - enemy_position_x) <= tolerance and np.abs(final_y - enemy_position_y) <= tolerance:
@@ -99,6 +103,10 @@ def calculate_interception(enemy: Projectile):
     equation_theta = sp.Eq(b / MAX_VELOCITY, sp.sin(theta))
     Theta_I_Vals = sp.solve(equation_theta, theta)
     Theta_I_Vals = [theta for theta in Theta_I_Vals if 0 < theta < sp.pi]
+    if not Theta_I_Vals:
+        print("No valid launch angles found.")
+        return [], []
+
     print("Theta_I_Vals:", Theta_I_Vals)
 
     # Solving for impact time
@@ -151,15 +159,16 @@ def calculate_interception(enemy: Projectile):
 
 
 
-enemy = Projectile(1000,45)
+enemy = Projectile(100,45)
 
 
 interception_trajectories, impact_times = calculate_interception(enemy)
 
 if interception_trajectories:
     filtered_trajectories = filter_trajectories(enemy, interception_trajectories, impact_times)
-    plot_all_trajectories(enemy.trajectory, filtered_trajectories)
-
-
-
-
+    if filtered_trajectories:
+        plot_all_trajectories(enemy.trajectory, filtered_trajectories)
+    else:
+        print("No valid interception trajectories found.")
+else:
+    print("No interception trajectories could be calculated.")
