@@ -124,6 +124,8 @@ def calculate_interception(enemy: Projectile):
         return []
 
     trajectories = []
+    interception_launch_velocities = []
+    interception_launch_angles = []
 
     for impact_time in impact_times:
         for Theta_I in Theta_I_Vals:
