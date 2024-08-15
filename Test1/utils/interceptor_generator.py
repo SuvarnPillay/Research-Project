@@ -1,5 +1,5 @@
-import sys
-sys.path.insert(0, r'C:\Users\suvar\General\Work\Varsity\Honours\Research\Lab\Test1\utils')
+# import sys
+# sys.path.insert(0, r'C:\Users\suvar\General\Work\Varsity\Honours\Research\Lab\Test1\utils')
 from trajectory_generator_class import Projectile
 import matplotlib.pyplot as plt
 import sympy as sp
@@ -122,10 +122,6 @@ def calculate_interception(enemy: Projectile):
     if not impact_times:
         print("No valid impact times found.")
         return []
-
-    # impact_time = max(impact_times)
-
-
 
     trajectories = []
 
