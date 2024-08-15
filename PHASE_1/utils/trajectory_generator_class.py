@@ -22,8 +22,8 @@ class Projectile:
         self.y = self.v0 * sp.sin(self.theta) * self.t - 0.5 * self.g * self.t**2
 
         # Display the equations
-        disp(sp.Eq(sp.Symbol('x(t)'), self.x))
-        disp(sp.Eq(sp.Symbol('y(t)'), self.y))
+        # disp(sp.Eq(sp.Symbol('x(t)'), self.x))
+        # disp(sp.Eq(sp.Symbol('y(t)'), self.y))
 
         self.create_trajectory()
    
@@ -41,7 +41,7 @@ class Projectile:
             
             # Calculate total flight time
             t_flight = 2 * v0_val * np.sin(theta_rad_val) / g_val
-            print("Projectile Flight Time: " + str(t_flight))
+            # print("Projectile Flight Time: " + str(t_flight))
             t_vals = np.linspace(0, t_flight, num=500)
             
             # Substitute values into the equations

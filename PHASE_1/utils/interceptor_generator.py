@@ -7,23 +7,25 @@ from sympy import sin, cos
 import numpy as np
 from IPython.display import display as disp
 
-def filter_trajectories(enemy: Projectile, interception_trajectories, impact_time):
+def filter_trajectories(enemy: Projectile, interception_trajectories, impact_times, launch_angles):
 
     filtered_trajectories = []
+    valid_angles = []
 
     for impact_time in impact_times:
         # Calculate enemy position at impact time
         enemy_position_x = enemy.params[0][0] * np.cos(np.radians(enemy.params[0][1])) * impact_time
         enemy_position_y = enemy.params[0][0] * np.sin(np.radians(enemy.params[0][1])) * impact_time - 0.5 * 9.81 * impact_time ** 2
         if enemy_position_x < 0 or enemy_position_y < 0:
-            return None
+            return [],[]
         
-        print(f"Enemy position: {enemy_position_x},{enemy_position_y}" )
-        for trajectory in interception_trajectories:
+       
+        for trajectory,angle in zip(interception_trajectories,launch_angles):
+            
             #-1 gets the last value in the list
             final_x = trajectory[-1, 0]
             final_y = trajectory[-1, 1]
-            print(f"Interceptor Position: {final_x},{final_y}" )
+           
             
             # Set a tolerance for how close the interception must be
             tolerance = 5  # Adjust this value as needed
@@ -31,8 +33,9 @@ def filter_trajectories(enemy: Projectile, interception_trajectories, impact_tim
             # Check if the final x and y positions are within the tolerance of the enemy's position
             if np.abs(final_x - enemy_position_x) <= tolerance and np.abs(final_y - enemy_position_y) <= tolerance:
                 filtered_trajectories.append(trajectory)
+                valid_angles.append(angle)
 
-    return filtered_trajectories
+    return filtered_trajectories, valid_angles
 
 
 def plot_trajectory(trajectory):
@@ -94,20 +97,22 @@ def calculate_interception(enemy: Projectile):
     a = V0_P * np.cos(np.radians(Theta_P))
     b = V0_P * np.sin(np.radians(Theta_P))
 
-    print("A:", a)
-    print("B:", b)
+    # print("A:", a)
+    # print("B:", b)
 
     t, theta = sp.symbols('t theta')
     
     # Solving for launch angle first
     equation_theta = sp.Eq(b / MAX_VELOCITY, sp.sin(theta))
     Theta_I_Vals = sp.solve(equation_theta, theta)
+    Theta_I_Vals = [theta for theta in Theta_I_Vals if np.isreal(theta)]
+    
     Theta_I_Vals = [theta for theta in Theta_I_Vals if 0 < theta < sp.pi]
     if not Theta_I_Vals:
-        print("No valid launch angles found.")
+        # print("No valid launch angles found.")
         return [], []
 
-    print("Theta_I_Vals:", Theta_I_Vals)
+    # print("Theta_I_Vals:", Theta_I_Vals)
 
     # Solving for impact time
     impact_times = []
@@ -118,12 +123,14 @@ def calculate_interception(enemy: Projectile):
             if time.is_real and time > 0:
                 impact_times.append(time)
 
-    print("Impact Times:", impact_times)
+    # print("Impact Times:", impact_times)
     if not impact_times:
-        print("No valid impact times found.")
+        # print("No valid impact times found.")
         return []
 
     trajectories = []
+    
+    
 
     for impact_time in impact_times:
         for Theta_I in Theta_I_Vals:
@@ -149,22 +156,18 @@ def calculate_interception(enemy: Projectile):
             coordinates = np.column_stack((x_vals, y_vals, t_vals))
             trajectory = coordinates
             trajectories.append(trajectory)
-
-    return trajectories, impact_times
-
-
-
-
-enemy = Projectile(100,45)
-
-
-interception_trajectories, impact_times = calculate_interception(enemy)
-
-if interception_trajectories:
-    filtered_trajectories = filter_trajectories(enemy, interception_trajectories, impact_times)
-    if filtered_trajectories:
-        plot_all_trajectories(enemy.trajectory, filtered_trajectories)
+    
+    if trajectories:
+        filtered_trajectories, filtered_angles = filter_trajectories(enemy, trajectories, impact_times, Theta_I_Vals)
     else:
-        print("No valid interception trajectories found.")
-else:
-    print("No interception trajectories could be calculated.")
+        return [],[]
+    if filtered_trajectories:
+        return filtered_trajectories, filtered_angles
+    else:
+        return [],[]
+
+
+
+
+
+
