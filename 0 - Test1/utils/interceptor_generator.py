@@ -7,9 +7,10 @@ from sympy import sin, cos
 import numpy as np
 from IPython.display import display as disp
 
-def filter_trajectories(enemy: Projectile, interception_trajectories, impact_time):
+def filter_trajectories(enemy: Projectile, interception_trajectories, impact_time, launch_angles):
 
     filtered_trajectories = []
+    valid_angles = []
 
     for impact_time in impact_times:
         # Calculate enemy position at impact time
@@ -19,7 +20,8 @@ def filter_trajectories(enemy: Projectile, interception_trajectories, impact_tim
             return None
         
         print(f"Enemy position: {enemy_position_x},{enemy_position_y}" )
-        for trajectory in interception_trajectories:
+        for i,trajectory in enumerate(interception_trajectories):
+            
             #-1 gets the last value in the list
             final_x = trajectory[-1, 0]
             final_y = trajectory[-1, 1]
@@ -31,8 +33,9 @@ def filter_trajectories(enemy: Projectile, interception_trajectories, impact_tim
             # Check if the final x and y positions are within the tolerance of the enemy's position
             if np.abs(final_x - enemy_position_x) <= tolerance and np.abs(final_y - enemy_position_y) <= tolerance:
                 filtered_trajectories.append(trajectory)
+                valid_angles.append(launch_angles[i])
 
-    return filtered_trajectories
+    return filtered_trajectories, valid_angles
 
 
 def plot_trajectory(trajectory):
@@ -124,8 +127,8 @@ def calculate_interception(enemy: Projectile):
         return []
 
     trajectories = []
-    interception_launch_velocities = []
-    interception_launch_angles = []
+    
+    
 
     for impact_time in impact_times:
         for Theta_I in Theta_I_Vals:
@@ -152,7 +155,7 @@ def calculate_interception(enemy: Projectile):
             trajectory = coordinates
             trajectories.append(trajectory)
 
-    return trajectories, impact_times
+    return trajectories, impact_times, Theta_I_Vals
 
 
 
@@ -160,10 +163,10 @@ def calculate_interception(enemy: Projectile):
 enemy = Projectile(100,45)
 
 
-interception_trajectories, impact_times = calculate_interception(enemy)
+interception_trajectories, impact_times, launch_angles = calculate_interception(enemy)
 
 if interception_trajectories:
-    filtered_trajectories = filter_trajectories(enemy, interception_trajectories, impact_times)
+    filtered_trajectories, filtered_anlges = filter_trajectories(enemy, interception_trajectories, impact_times, launch_angles)
     if filtered_trajectories:
         plot_all_trajectories(enemy.trajectory, filtered_trajectories)
     else:
