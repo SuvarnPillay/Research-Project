@@ -104,8 +104,8 @@ def calculate_interception(enemy: Projectile):
     
     # Solving for launch angle first
     equation_theta = sp.Eq(b / MAX_VELOCITY, sp.sin(theta))
-    Theta_I_Vals = sp.solve(equation_theta, theta)
-    Theta_I_Vals = [theta for theta in Theta_I_Vals if np.isreal(theta)]
+    Theta_I_Vals_before = sp.solve(equation_theta, theta)
+    Theta_I_Vals = [theta for theta in Theta_I_Vals_before if theta.is_real]
     
     Theta_I_Vals = [theta for theta in Theta_I_Vals if 0 < theta < sp.pi]
     if not Theta_I_Vals:
