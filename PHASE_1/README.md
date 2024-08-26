@@ -16,3 +16,7 @@ Additions for future phases could be:
 3) Addition of wind 
 4) Control inputs for interceptor
 5) 3-D solution
+
+
+
+NORMAL BAYESIAN NETWORK ATTEMPT WITH TWO NETWORKS THAT WORK WITH EACH OTHER

@@ -1,0 +1,9 @@
+enemy_velocity,enemy_launch_angle,interception_velocity,interception_launch_angle,passed
+1887,55,3000,2.60029725351357,Successful
+1926,59,3000,2.55886747745370,Successful
+1483,16,3000,-1000,Failed
+1614,34,3000,2.83601325529953,Successful
+599,51,3000,-1000,Failed
+345,25,3000,-1000,Failed
+3289,41,3000,-1000,Failed
+1545,49,3000,2.74239909523756,Successful

@@ -23,7 +23,7 @@ for i in range(2):
     interceptor_trajectories, interceptor_angles = calculate_interception(enemy)
 
     if interceptor_trajectories:
-        # plot_all_trajectories(enemy.trajectory, interceptor_trajectories)
+        plot_all_trajectories(enemy.trajectory, interceptor_trajectories)
         for trajectory, angle in zip(interceptor_trajectories, interceptor_angles):
             data.append([enemy_velocity, enemy_launch_angle, 3000, angle,'Successful'])
     else:
