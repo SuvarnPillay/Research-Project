@@ -68,8 +68,11 @@ for i in range(6):
         pos[f'I_A{i}'] = (i * 3 + 1, (1) + 1)
 
 
-# Create the Bayesian Network
-GT = BayesianNetwork()
+from pgmpy.factors.continuous import LinearGaussianCPD
+from pgmpy.models import LinearGaussianBayesianNetwork
+
+# Initialize the Bayesian Network model
+GT = LinearGaussianBayesianNetwork()
 
 for i in range(6):
     GT.add_nodes_from([
@@ -80,14 +83,14 @@ for i in range(6):
     ])
     
     GT.add_edges_from([
-        (f'P_FP{i}', f'P_D{i}'),
-        (f'P_D{i}', f'P_IP{i}'),
-        (f'P_D{i}', f'P_A{i}'),
-        (f'P_FP{i}', f'P_V{i}'),
-        (f'I_FP{i}', f'I_D{i}'),
-        (f'I_D{i}', f'I_IP{i}'),
-        (f'I_D{i}', f'I_A{i}'),
-        (f'I_FP{i}', f'I_V{i}')
+        ( f'P_D{i}', f'P_FP{i}'),
+        (f'P_IP{i}', f'P_D{i}'),
+        (f'P_A{i}', f'P_D{i}'),
+        ( f'P_V{i}',f'P_FP{i}'),
+        ( f'I_FP{i}', f'I_D{i}'),
+        (f'I_D{i}',f'I_IP{i}'),
+        (f'I_D{i}',f'I_A{i}'),
+        ( f'I_FP{i}',f'I_V{i}')
     ])
 
     if i < 5:
@@ -108,5 +111,202 @@ for i in range(6):
         # Edge between interceptor and projectile across time slices
         GT.add_edge(f'P_FP{i + 1}', f'I_FP{i}')
 
-# Visualize the Bayesian Network with custom positions and colors
 visualise(GT, pos)
+
+# CPDs for Projectile Nodes
+for i in range(6):
+    if i == 0:
+        cpd_P_FP = LinearGaussianCPD(
+            f'P_FP{i}', 
+            [5.0, 0.9, 0.7],  # Assuming offset is replaced with beta's first value
+            2.0, 
+            [ f'P_V{i}', f'P_D{i}']
+        )
+
+        cpd_P_D = LinearGaussianCPD(
+            f'P_D{i}', 
+            [0.0, 0.5, 0.3],  # Assuming offset is replaced with beta's first value
+            0.5,
+            [f'P_A{i}', f'P_IP{i}']
+        )
+
+        cpd_P_V = LinearGaussianCPD(
+            f'P_V{i}', 
+            [20.0, 0.9, 0.3],  # Assuming offset is replaced with beta's first value
+            1.0, 
+            []
+        )
+
+        cpd_P_IP = LinearGaussianCPD(
+            f'P_IP{i}',
+            [0.0],  # No evidence, so beta is just the offset value
+            0.1,
+            []
+        )
+
+        cpd_P_A = LinearGaussianCPD(
+            f'P_A{i}',
+            [45.0],  # No evidence, so beta is just the offset value
+            0.1,
+            []
+        )
+    else:
+        cpd_P_FP = LinearGaussianCPD(
+            f'P_FP{i}', 
+            [5.0, 0.9, 0.7],  # Assuming offset is replaced with beta's first value
+            2.0, 
+            [ f'P_V{i}', f'P_D{i}', f'P_FP{i - 1}']
+        )
+
+        cpd_P_D = LinearGaussianCPD(
+            f'P_D{i}', 
+            [0.0, 0.5, 0.3],  # Assuming offset is replaced with beta's first value
+            0.5,
+            [f'P_A{i}', f'P_IP{i}',  f'P_D{i - 1}']
+        )
+
+        cpd_P_V = LinearGaussianCPD(
+            f'P_V{i}', 
+            [20.0, 0.9, 0.3],  # Assuming offset is replaced with beta's first value
+            1.0, 
+            [ f'P_V{i - 1}']
+        )
+
+        cpd_P_IP = LinearGaussianCPD(
+            f'P_IP{i}',
+            [0.0],  # No evidence, so beta is just the offset value
+            0.1,
+            [f'P_IP{i - 1}']
+        )
+
+        cpd_P_A = LinearGaussianCPD(
+            f'P_A{i}',
+            [45.0],  # No evidence, so beta is just the offset value
+            0.1,
+            [f'P_A{i - 1}']
+        )
+
+
+    # Add CPDs to the network
+    GT.add_cpds(cpd_P_FP, cpd_P_D, cpd_P_V, cpd_P_IP, cpd_P_A)
+
+# CPDs for Interceptor Nodes
+for i in range(6):
+
+    if i == 0:
+
+        if i < 5:
+            cpd_I_FP = LinearGaussianCPD(
+                f'I_FP{i}', 
+                [5.0, 0.9, 0.7, 0.8],  # Assuming offset is replaced with beta's first value
+                3.0, 
+                [f'P_FP{i+1}']
+            )
+        else:
+            cpd_I_FP = LinearGaussianCPD(
+                f'I_FP{i}', 
+                [5.0, 0.9, 0.7, 0.8],  # Assuming offset is replaced with beta's first value
+                3.0, 
+                []
+            )
+
+        cpd_I_D = LinearGaussianCPD(
+            f'I_D{i}', 
+            [0.0, 0.5, 0.3, 0.2],  # Assuming offset is replaced with beta's first value
+            0.5,
+            [ f'I_FP{i}']
+        )
+
+        cpd_I_V = LinearGaussianCPD(
+            f'I_V{i}', 
+            [15.0, 0.8, 0.3, 0.3],  # Assuming offset is replaced with beta's first value
+            1.5, 
+            [f'I_FP{i}']
+        )
+
+        cpd_I_IP = LinearGaussianCPD(
+            f'I_IP{i}',
+            [0.0],  # No evidence, so beta is just the offset value
+            0.1,
+            [f'I_D{i}']
+        )
+
+        cpd_I_A = LinearGaussianCPD(
+            f'I_A{i}',
+            [45.0],  # Depends on the projectile's angle
+            0.2,
+            [f'I_D{i}']
+        )
+
+    else:
+        if i < 5:
+            cpd_I_FP = LinearGaussianCPD(
+                f'I_FP{i}', 
+                [5.0, 0.9, 0.7, 0.8],  # Assuming offset is replaced with beta's first value
+                3.0, 
+                [f'P_FP{i+1}',  f'I_FP{i - 1}']
+            )
+        else:
+            cpd_I_FP = LinearGaussianCPD(
+                f'I_FP{i}', 
+                [5.0, 0.9, 0.7, 0.8],  # Assuming offset is replaced with beta's first value
+                3.0, 
+                [f'I_FP{i - 1}']
+            )
+
+        cpd_I_D = LinearGaussianCPD(
+            f'I_D{i}', 
+            [0.0, 0.5, 0.3, 0.2],  # Assuming offset is replaced with beta's first value
+            0.5,
+            [ f'I_FP{i}', f'I_D{i - 1}']
+        )
+
+        cpd_I_V = LinearGaussianCPD(
+            f'I_V{i}', 
+            [15.0, 0.8, 0.3, 0.3],  # Assuming offset is replaced with beta's first value
+            1.5, 
+            [f'I_FP{i}',  f'I_V{i - 1}']
+        )
+
+        cpd_I_IP = LinearGaussianCPD(
+            f'I_IP{i}',
+            [0.0],  # No evidence, so beta is just the offset value
+            0.1,
+            [f'I_D{i}' , f'I_IP{i - 1}']
+        )
+
+        cpd_I_A = LinearGaussianCPD(
+            f'I_A{i}',
+            [45.0],  # Depends on the projectile's angle
+            0.2,
+            [f'I_D{i}' ,  f'I_A{i - 1}']
+        )
+
+
+    # Add CPDs to the network
+    GT.add_cpds(cpd_I_FP, cpd_I_D, cpd_I_V, cpd_I_IP, cpd_I_A)
+
+# Validation
+if GT.check_model():
+    print("The model is valid!")
+else:
+    print("The model is not valid. Please check the CPDs and network structure.")
+
+
+
+
+from pgmpy.sampling import BayesianModelSampling
+
+# Create a sampler object for forward sampling
+sampler = BayesianModelSampling(GT)
+
+# Define the number of samples to generate
+n_samples = 1000
+
+# Perform forward sampling
+samples = sampler.forward_sample(size=n_samples, return_type='dataframe')
+
+# Save the sampled data to a CSV file
+samples.to_csv("trajectory_data.csv", index=False)
+
+print(f"Generated {n_samples} samples and saved to trajectory_data.csv")
