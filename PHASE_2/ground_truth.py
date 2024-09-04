@@ -295,18 +295,38 @@ else:
 
 
 
-from pgmpy.sampling import BayesianModelSampling
+import numpy as np
+import pandas as pd
 
-# Create a sampler object for forward sampling
-sampler = BayesianModelSampling(GT)
+def sample_from_joint_gaussian(mean, covariance, size=1):
+    """Samples from a joint Gaussian distribution with given mean and covariance."""
+    mean = np.array(mean).flatten()
+    covariance = np.array(covariance)
+    
+    if mean.shape[0] != covariance.shape[0]:
+        raise ValueError("Mean and covariance dimensions do not match.")
+    
+    return np.random.multivariate_normal(mean, covariance, size=size)
 
-# Define the number of samples to generate
+def forward_sample_from_dbn(JGD, n_samples=1000):
+    """Perform forward sampling from a joint Gaussian distribution."""
+    # Extract mean and covariance from the joint Gaussian distribution
+    mean = JGD.mean.flatten()
+    covariance = JGD.covariance
+    
+    # Sample from the joint Gaussian distribution
+    sampled_data = sample_from_joint_gaussian(mean, covariance, size=n_samples)
+    
+    # Create a DataFrame from the sampled data
+    sample_df = pd.DataFrame(sampled_data, columns=JGD.variables)
+    
+    return sample_df
+
+# Generate samples
 n_samples = 1000
+JGD = GT.to_joint_gaussian()
+samples_df = forward_sample_from_dbn(JGD, n_samples=n_samples)
 
-# Perform forward sampling
-samples = sampler.forward_sample(size=n_samples, return_type='dataframe')
-
-# Save the sampled data to a CSV file
-samples.to_csv("trajectory_data.csv", index=False)
-
+# Save to CSV
+samples_df.to_csv("trajectory_data.csv", index=False)
 print(f"Generated {n_samples} samples and saved to trajectory_data.csv")
