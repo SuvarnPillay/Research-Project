@@ -1,0 +1,1 @@
+In this phase, I aim to improve on the 2-D ground truth model such that it produces trajectories that more accurately resemble projectile motion.
