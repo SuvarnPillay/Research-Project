@@ -1,5 +1,5 @@
 This is my research
-In this test folder, I am purely brainstorming and gaining foundational information in order to understand the problem better in order to properly solve it
+In this test folder, I am purely brainstorming and gaining foundational information in order to understand the problem better so that I can properly solve it
 
 Steps:
 
