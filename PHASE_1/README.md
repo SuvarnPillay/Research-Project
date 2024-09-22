@@ -18,5 +18,4 @@ Additions for future phases could be:
 5) 3-D solution
 
 
-
-NORMAL BAYESIAN NETWORK ATTEMPT WITH TWO NETWORKS THAT WORK WITH EACH OTHER
+All the steps in this phase serve mainly to grow my own understanding of the problem at hand so that I can develop the solution with a strong technical foundation of the problem.
