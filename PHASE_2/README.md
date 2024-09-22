@@ -11,4 +11,4 @@ In this phase, I aim to develop a basic network that will serve as the ground tr
 
 2) Then, I will make a more meaningful model by increasing it to 2 dimensions and follow similar steps.
 
-The above phases have been completed successfully. In the next phase, I hope to improve on the 2-D ground truth model such that it produces trajectories that more accurately resemble projectile motion.
+The above phases have been completed successfully. In the next phase, I hope to improve on the 2-D ground truth model such that it produces trajectories that more accurately resemble projectile motion. All final files are in the ground truth folder names 2-D working
