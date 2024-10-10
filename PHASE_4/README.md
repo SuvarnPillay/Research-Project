@@ -4,3 +4,4 @@ I aim to run the following experiments after fixing the model:
 
 1) Train and test with perfect information. 
 2) Train and test with missing final positions
+3) Graph predicted trajectories
