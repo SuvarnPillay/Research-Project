@@ -1,0 +1,465 @@
+# %%
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from pgmpy.models import BayesianNetwork, LinearGaussianBayesianNetwork
+from pgmpy.estimators import MaximumLikelihoodEstimator, ExpectationMaximization, BayesianEstimator
+from pgmpy.estimators import HillClimbSearch, BicScore, K2Score, BDsScore
+import matplotlib.pyplot as plt
+from pgmpy.inference import VariableElimination
+import networkx as nx
+import csv
+from datetime import datetime
+import time
+import os
+
+# %%
+
+def visualise(model, pos, projectile_color="skyblue", interceptor_color="lightcoral"):
+    edges = model.edges()
+
+    # Create separate lists for intra-time slice and inter-time slice edges
+    intra_time_slice_edges = []
+    inter_time_slice_edges = []
+
+    for edge in edges:
+        if abs(int(edge[0][-1]) - int(edge[1][-1])) == 0:
+            intra_time_slice_edges.append(edge)
+        else:
+            inter_time_slice_edges.append(edge)
+
+    # Create a directed graph object
+    G = nx.DiGraph()
+
+    # Add edges to the graph
+    G.add_edges_from(edges)
+
+    # Create a color map based on node type
+    color_map = []
+    for node in G.nodes():
+        if "FP" in node:
+            color_map.append("gray")
+        elif "P" == node[0]:
+            color_map.append(projectile_color)
+        elif "I_" in node:
+            color_map.append(interceptor_color)
+        else:
+            color_map.append("gray")  # Default color for any other nodes
+
+    # Plot the graph with custom positions and colors
+    plt.figure(figsize=(20, 12))
+
+    # Draw edges first to ensure arrowheads are not covered
+    nx.draw_networkx_edges(
+        G, pos, edgelist=intra_time_slice_edges, arrows=True,
+        edge_color='black', style='solid', arrowsize=15, arrowstyle='-|>',
+        min_source_margin=10, min_target_margin=15  # Increase margins to make arrows shorter
+    )
+
+    nx.draw_networkx_edges(
+        G, pos, edgelist=inter_time_slice_edges, arrows=True,
+        edge_color='black', style=(0, (5, 10)), arrowsize=15, arrowstyle='-|>',
+        min_source_margin=10, min_target_margin=15  # Increase margins to make arrows shorter
+    )
+
+    # Draw nodes after edges
+    nx.draw_networkx_nodes(G, pos, node_size=1000, node_color=color_map)
+
+    nx.draw_networkx_labels(G, pos, font_size=8, font_weight="bold")
+
+    plt.title("Bayesian Network Graph")
+    plt.show()
+
+
+# %%
+# Define positions manually for x and y positions
+pos = {}
+
+for i in range(6):
+    if i % 2 == 0:
+        # Projectile nodes positions (lower row)
+        pos[f'P_FP_x{i}'] = (i * 3 - 1 - 1, 0)          # Final position x
+        pos[f'P_FP_y{i}'] = (i * 3 - 1, 0)              # Final position y
+        pos[f'P_V{i}'] = (i * 3 + 1 - 1, -1)            # Velocity
+        pos[f'P_IP_x{i}'] = (i * 3 - 1 - 1, -1)         # Initial position x
+        pos[f'P_IP_y{i}'] = (i * 3 - 1, -1)             # Initial position y
+
+        # Interceptor nodes positions (upper row)
+        pos[f'I_FP_x{i}'] = (i * 3 - 1, 3)          # Final position x
+        pos[f'I_FP_y{i}'] = (i * 3, 3)              # Final position y
+        pos[f'I_V{i}'] = (i * 3 + 1, 2)             # Velocity
+        pos[f'I_IP_x{i}'] = (i * 3 - 1, 2)          # Initial position x
+        pos[f'I_IP_y{i}'] = (i * 3, 2)              # Initial position y
+    else:
+        # Projectile nodes positions (lower row)
+        pos[f'P_FP_x{i}'] = (i * 3 - 1 - 1, -1)         # Final position x
+        pos[f'P_FP_y{i}'] = (i * 3 - 1, -1)             # Final position y
+        pos[f'P_V{i}'] = (i * 3 + 1 - 1, -2)            # Velocity
+        pos[f'P_IP_x{i}'] = (i * 3 - 1 - 1, -2)         # Initial position x
+        pos[f'P_IP_y{i}'] = (i * 3 - 1, -2)             # Initial position y
+
+        # Interceptor nodes positions (upper row)
+        pos[f'I_FP_x{i}'] = (i * 3 - 1, 4)          # Final position x
+        pos[f'I_FP_y{i}'] = (i * 3, 4)              # Final position y
+        pos[f'I_V{i}'] = (i * 3 + 1, 3)             # Velocity
+        pos[f'I_IP_x{i}'] = (i * 3 - 1, 3)          # Initial position x
+        pos[f'I_IP_y{i}'] = (i * 3, 3)              # Initial position y
+
+
+# %%
+from pgmpy.factors.continuous import LinearGaussianCPD
+from pgmpy.models import LinearGaussianBayesianNetwork
+
+# Initialize the Bayesian Network model
+GT = LinearGaussianBayesianNetwork()
+
+for i in range(6):
+    # Add nodes for final position (FP), velocity (V), and initial position (IP)
+    GT.add_nodes_from([
+        f'P_FP_x{i}', f'P_FP_y{i}', f'P_V{i}', f'P_IP_x{i}', f'P_IP_y{i}',  # Projectile nodes
+        f'I_FP_x{i}', f'I_FP_y{i}', f'I_V{i}', f'I_IP_x{i}', f'I_IP_y{i}'   # Interceptor nodes
+    ])
+    
+    # Add edges within each time slice for both x and y positions
+    GT.add_edges_from([
+        (f'P_FP_x{i}' , f'P_IP_x{i}'),  # Initial position (x) influences final position (x)
+        (f'P_FP_x{i}' , f'P_V{i}'),     # Velocity influences final position (x)
+        (f'P_FP_y{i}' , f'P_IP_y{i}'),  # Initial position (y) influences final position (y)
+        (f'P_FP_y{i}', f'P_V{i}'),     # Velocity influences final position (y)
+        
+        (f'I_FP_x{i}' , f'I_IP_x{i}'),  # Interceptor: Initial position (x) influences final position (x)
+        (f'I_FP_x{i}' , f'I_V{i}'),     # Velocity influences final position (x)
+        (f'I_FP_y{i}' , f'I_IP_y{i}'),  # Initial position (y) influences final position (y)
+        (f'I_FP_y{i}' , f'I_V{i}')      # Velocity influences final position (y)
+    ])
+
+    if i < 5:
+        # Connect corresponding nodes between time slices for projectile and interceptor
+        GT.add_edges_from([
+            # Projectile time slice connections for x and y positions
+            (f'P_FP_x{i}', f'P_FP_x{i + 1}'),
+            (f'P_IP_x{i}', f'P_IP_x{i + 1}'),
+            (f'P_FP_y{i}', f'P_FP_y{i + 1}'),
+            (f'P_IP_y{i}', f'P_IP_y{i + 1}'),
+            (f'P_V{i}', f'P_V{i + 1}'),
+
+            # Interceptor time slice connections for x and y positions
+            (f'I_FP_x{i}', f'I_FP_x{i + 1}'),
+            (f'I_IP_x{i}', f'I_IP_x{i + 1}'),
+            (f'I_FP_y{i}', f'I_FP_y{i + 1}'),
+            (f'I_IP_y{i}', f'I_IP_y{i + 1}'),
+            (f'I_V{i}', f'I_V{i + 1}')
+        ])
+        
+        # Edge between projectile and interceptor across time slices
+        GT.add_edges_from([
+            (f'P_FP_x{i + 1}', f'I_FP_x{i}'),
+            (f'P_FP_y{i + 1}', f'I_FP_y{i}')
+        ])
+
+
+visualise(GT, pos)
+
+# Final edges to ensure convergence at the last time slice
+GT.add_edges_from([
+    (f'P_FP_x{5}', f'I_FP_x{5}'),
+    (f'P_FP_y{5}', f'I_FP_y{5}')
+])
+
+
+
+
+
+# %%
+for i in range(6):
+    if i == 0:
+        # Projectile CPDs for x and y positions
+        cpd_P_FP_x = LinearGaussianCPD(
+            f'P_FP_x{0}', 
+            [1000.0], 
+            300, 
+            []  # x-component velocity and initial x position
+        )
+
+        cpd_P_FP_y = LinearGaussianCPD(
+            f'P_FP_y{0}', 
+            [100.0], 
+            300.0, 
+            []  # y-component velocity and initial y position
+        )
+
+        cpd_P_V = LinearGaussianCPD(
+            f'P_V{0}', 
+            [20.0, 0.0, 0.0],  
+            10.0, 
+            [f'P_FP_x{0}' , f'P_FP_y{0}']  # No parents for velocity in first time slice
+        )
+
+        cpd_P_IP_x = LinearGaussianCPD(
+            f'P_IP_x{0}',
+            [0.0, 0.0],  
+            30000,
+            [f'P_FP_x{0}']  # No parents for initial x position in first time slice
+        )
+
+        cpd_P_IP_y = LinearGaussianCPD(
+            f'P_IP_y{0}',
+            [0.0, 0.0],  
+            0.0,
+            [f'P_FP_y{0}']  # No parents for initial y position in first time slice
+        )
+
+    else:
+        # Projectile CPDs for x and y positions
+        cpd_P_FP_x = LinearGaussianCPD(
+            f'P_FP_x{i}', 
+            [1000.0 + 50*(i*2), 0.8], 
+            300, 
+            [f'P_FP_x{i - 1}']  # x velocity and previous positions
+        )
+
+        cpd_P_FP_y = LinearGaussianCPD(
+            f'P_FP_y{i}', 
+            [100.0 + 50*(i*2) + 0.5*(-9.8)*(i*2)**2, 0.8], 
+            300, 
+            [f'P_FP_y{i - 1}']  # y velocity and previous positions
+        )
+
+        cpd_P_V = LinearGaussianCPD(
+            f'P_V{i}', 
+            [20.0, 1, 0.1, 0.1],  
+            5.0, 
+            [f'P_V{i - 1}', f'P_FP_x{i}', f'P_FP_y{i}']  # Velocity depends on the previous velocity
+        )
+
+        cpd_P_IP_x = LinearGaussianCPD(
+            f'P_IP_x{i}',
+            [0.0, 0.5,0.5],  
+            3,
+            [ f'P_FP_x{i}', f'P_IP_x{i - 1}']  # Initial x position depends on the previous final x position
+        )
+
+        cpd_P_IP_y = LinearGaussianCPD(
+            f'P_IP_y{i}',
+            [0.0, 0.5,0.5],  
+            300,
+            [ f'P_FP_y{i}', f'P_IP_y{i - 1}']  # Initial y position depends on the previous final y position
+        )
+
+    GT.add_cpds(cpd_P_FP_x, cpd_P_FP_y, cpd_P_V, cpd_P_IP_x, cpd_P_IP_y)
+
+
+# Interceptor CPDs
+for i in range(6):
+    if i == 0:
+        # Interceptor CPDs for x and y positions
+        cpd_I_FP_x = LinearGaussianCPD(
+            f'I_FP_x{0}', 
+            [10000.0, -0.5], 
+            30000, 
+            [f'P_FP_x{1}']  # x-component of final position depends on next projectile position, initial x, and velocity
+        )
+
+        cpd_I_FP_y = LinearGaussianCPD(
+            f'I_FP_y{0}', 
+            [100.0, 0.1], 
+            300, 
+            [f'P_FP_y{1}']  # y-component of final position depends on next projectile position, initial y, and velocity
+        )
+
+        cpd_I_V = LinearGaussianCPD(
+            f'I_V{0}', 
+            [20.0, 0.0, 0.0],  
+            10.0, 
+            [f'I_FP_x{0}', f'I_FP_y{0}']  # No parents for velocity in first time slice
+        )
+
+        cpd_I_IP_x = LinearGaussianCPD(
+            f'I_IP_x{0}',
+            [10000.0, 0.0],  
+            3000.0,
+            [f'I_FP_x{0}']  # No parents for initial x position in first time slice
+        )
+
+        cpd_I_IP_y = LinearGaussianCPD(
+            f'I_IP_y{0}',
+            [0.0, 0.0],  
+            0.0,
+            [f'I_FP_y{0}']  # No parents for initial y position in first time slice
+        )
+
+    else:
+        # Interceptor CPDs for x and y positions
+        if i < 4: 
+            cpd_I_FP_x = LinearGaussianCPD(
+            f'I_FP_x{i}', 
+            [10000.0, -1, 0.1], 
+            300,
+            [f'P_FP_x{i+1}', f'I_FP_x{i - 1}']  # x-component of final position depends on next projectile position, initial x, and velocity
+            )
+
+            cpd_I_FP_y = LinearGaussianCPD(
+                f'I_FP_y{i}', 
+                [80*(i*2) + 0.5*(-9.8)*(i*2)**2, 0.3, 0.1], 
+            300, 
+                [f'P_FP_y{i+1}', f'I_FP_y{i - 1}']  # y-component of final position depends on next projectile position, initial y, and velocity
+            )
+        elif i < 5:
+            cpd_I_FP_x = LinearGaussianCPD(
+                f'I_FP_x{i}', 
+                [10000.0, -1, 0.1], 
+            300,
+                [f'P_FP_x{i+1}', f'I_FP_x{i - 1}']  # x-component depends on projectile and previous positions
+            )
+
+            cpd_I_FP_y = LinearGaussianCPD(
+                f'I_FP_y{i}', 
+                [30*(i*2) + 0.5*(-9.8)*(i*2)**2, 1, 0.1], 
+            300, 
+                [f'P_FP_y{i+1}', f'I_FP_y{i - 1}']  # y-component depends on projectile and previous positions
+            )
+        else:
+            cpd_I_FP_x = LinearGaussianCPD(
+                f'I_FP_x{i}', 
+                [0, 0.0, 1.0], 
+            300, 
+                [f'I_FP_x{i - 1}', f'P_FP_x{i}']  # x-component for final time slice
+            )
+
+            cpd_I_FP_y = LinearGaussianCPD(
+                f'I_FP_y{i}', 
+                [0, 0, 1.0], 
+            300, 
+                [f'I_FP_y{i - 1}', f'P_FP_y{i}']  # y-component for final time slice
+            )
+
+        cpd_I_V = LinearGaussianCPD(
+            f'I_V{i}', 
+            [20.0, 1, 0.1, 0.1],  
+            5.0, 
+            [f'I_V{i - 1}', f'I_FP_x{i}', f'I_FP_y{i}']  # Velocity depends on previous velocity
+        )
+
+        cpd_I_IP_x = LinearGaussianCPD(
+            f'I_IP_x{i}',
+            [0.0, 0.5, 0.5], 
+            300,
+            [ f'I_FP_x{i}', f'I_IP_x{i - 1}']  # Initial x position depends on previous final x position
+        )
+
+        cpd_I_IP_y = LinearGaussianCPD(
+            f'I_IP_y{i}',
+            [0.0, 0.5, 0.5], 
+            300,
+            [ f'I_FP_y{i}', f'I_IP_y{i - 1}']  # Initial y position depends on previous final y position
+        )
+
+   
+    GT.add_cpds(cpd_I_FP_x, cpd_I_FP_y, cpd_I_V, cpd_I_IP_x, cpd_I_IP_y)
+
+
+# %%
+
+if GT.check_model():
+    print("The model is valid!")
+else:
+    print("The model is not valid. Please check the CPDs and network structure.")
+
+
+# %%
+import numpy as np
+import pandas as pd
+from pgmpy.models import LinearGaussianBayesianNetwork
+
+def get_topological_order(model):
+    """
+    Function to return nodes of the Bayesian Network in topological order.
+    """
+    nodes = list(model.nodes())
+    order = []
+    visited = set()
+    
+    def visit(node):
+        if node not in visited:
+            visited.add(node)
+            for parent in model.get_parents(node):
+                visit(parent)
+            order.append(node)
+    
+    for node in nodes:
+        visit(node)
+    
+    return order
+
+def sample_from_lgbn(model, n_samples=1000):
+    """Perform forward sampling from a Linear Gaussian Bayesian Network."""
+   
+    topological_order = get_topological_order(model)
+    print(topological_order)
+    # Initialize an empty DataFrame for storing samples
+    samples_df = pd.DataFrame(index=range(n_samples), columns=topological_order)
+
+    for node in topological_order:
+        cpd = model.get_cpds(node)
+
+        # Mean and variance of the CPD
+        mean = np.array(cpd.mean).flatten()
+        variance = np.array(cpd.variance).flatten()
+
+        if len(mean) != 1 and len(variance) != 1:
+            raise ValueError(f"Mean and variance for node {node} must be scalar or match dimensions.")
+
+        if not cpd.evidence:
+            # Node has no parents, sample directly
+            samples_df[node] = np.random.normal(loc=mean[0], scale=np.sqrt(variance), size=n_samples)
+        else:
+            # Ensure parent columns are converted to float
+            parent_values = samples_df[cpd.evidence].astype(float).values
+            # Reshape parent_values to ensure it matches dimensions
+            if parent_values.shape[1] != len(mean[1:]):
+                print(cpd.variables)
+                raise ValueError(f"Number of parent columns ({parent_values.shape[1]}) does not match the number of coefficients ({len(mean[1:])}).")
+            
+            # Calculate the mean based on the parent's sampled values
+            parent_mean = np.dot(parent_values, mean[1:]) + mean[0]
+            # Sample from the Gaussian distribution
+            samples_df[node] = np.random.normal(loc=parent_mean, scale=np.sqrt(variance), size=n_samples)
+
+    return samples_df
+
+for i in range(0,1000001,10000):
+
+    start_gen_time = time.time()
+    n_samples = i
+    samples_df = sample_from_lgbn(GT, n_samples=n_samples)
+
+    end_gen_time = time.time()
+    gen_time = end_gen_time - start_gen_time
+
+    samples_df.to_csv("trajectory_data.csv", index=False)
+    print(f"Generated {n_samples} samples and saved to trajectory_data.csv")
+
+
+    # Logging the results to CSV
+    csv_file = 'GT_performance_log.csv'
+    header = ["Date", "Sample Size", "Generation Time (s)"]
+
+    # Check if the CSV file already exists
+    write_header = not os.path.isfile(csv_file)
+
+    with open(csv_file, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        
+        # Write header if file doesn't exist
+        if write_header:
+            writer.writerow(header)
+            
+        # Write data row
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            len(samples_df),
+            gen_time
+        ])
+
+    print("Results logged to", csv_file)
+
