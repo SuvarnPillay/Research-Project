@@ -1,0 +1,2 @@
+This is my honours research. It has been split into several different phases with PHASE_4 being the final phase that I implemented. There is another README file in that directory
+detailing how to run the code for the various plots.
